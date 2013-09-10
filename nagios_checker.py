@@ -11,7 +11,7 @@ GET_PARAMS = {
     'servicestatustypes': 28,
     'hoststatustypes': 15,
 }
-DISABLE_NOTIFICATION_IMG = '/nagios3/images/ndisabled.gif'
+DISABLE_NOTIFICATION = '/nagios3/images/ndisabled.gif'
 
 
 def get_new_nagios_status(url, user, passwd,
@@ -37,11 +37,13 @@ def get_new_nagios_status(url, user, passwd,
         tds = (tr.findAll('td', recursive=False))
         if len(tds) == 7:
             try:
-                host_name = tds[0].find('table').find('table').find('td').find('a').string
+                host_name = tds[0].find('table').find('table').find(
+                    'td').find('a').string
             except AttributeError:
                 pass
-            service_name = tds[1].find('table').find('table').find('td').find('a').string
-            if tds[1].find('table').find('img', {'src': DISABLE_NOTIFICATION_IMG}):
+            service_name = tds[1].find('table').find('table').find(
+                'td').find('a').string
+            if tds[1].find('table').find('img', {'src': DISABLE_NOTIFICATION}):
                 notification = False
             status = tds[2].string
 
