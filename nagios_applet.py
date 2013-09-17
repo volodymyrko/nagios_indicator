@@ -53,12 +53,9 @@ class NagiosApplet(object):
         self.show_disabled = False
         self.auth = {}
         self.nagios_status = {}
-        self.warning = False
-        self.critical = False
         self.check_status()
         self.timeout_id = gobject.timeout_add(CHECK_INTERVAL,
             self.check_status)
-        
 
     def build_menu(self):
         """Create menu
@@ -88,29 +85,29 @@ class NagiosApplet(object):
                 self.notify(**NETWORK_ERR_MSG)
                 self.auth = {} # try read config again
             else:
-                self.set_icon() # restore custom icon
-
-                self.warning = False
-                self.critical = False
-
-                for host in new_nagios_status:
-                    for service, new_value in new_nagios_status[host].items():
-                        try:
-                            old_value = self.nagios_status[host].pop(service)
-                            if new_value != old_value or self.renotify:
-                                self.notify(header=host,
-                                    body='{0} {1}'.format(service, new_value))
-                        except KeyError:
-                            self.notify(header=host,
-                                body='{0} {1}'.format(service, new_value))
-                for host in self.nagios_status:
-                    for service in self.nagios_status[host]:
-                        self.notify(header=host,
-                            body='{0} {1}'.format(service, 'OK'))
+                self.check_err_notifies(new_nagios_status)
+                self.check_ok_notifies()
                 self.nagios_status = new_nagios_status
                 self.update_icon()
-
         return True
+
+    def check_err_notifies(self, new_nagios_status):
+        for host in new_nagios_status:
+            for service, new_value in new_nagios_status[host].items():
+                try:
+                    old_value = self.nagios_status[host].pop(service)
+                    if new_value != old_value or self.renotify:
+                        self.notify(header=host,
+                            body='{0} {1}'.format(service, new_value))
+                except KeyError:
+                    self.notify(header=host,
+                        body='{0} {1}'.format(service, new_value))
+
+    def check_ok_notifies(self):
+        for host in self.nagios_status:
+            for service in self.nagios_status[host]:
+                self.notify(header=host,
+                    body='{0} {1}'.format(service, 'OK'))
 
     def update_icon(self):
         #update icon after check_status
