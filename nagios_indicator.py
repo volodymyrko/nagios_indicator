@@ -14,7 +14,6 @@ from nagios_checker import get_new_nagios_status
 
 
 CHECK_INTERVAL = 60 * 5 * 1000 # mls
-CHECK_INTERVAL = 30 * 1000 # mls
 
 NAGIOS_ICON = 'nagios'
 WARNING_ICON = 'warning'
@@ -41,6 +40,7 @@ class NagiosApplet(object):
         self.ind = appindicator.Indicator("nagios-checker",
             NAGIOS_ICON,
             appindicator.CATEGORY_APPLICATION_STATUS)
+        self.check_interval = CHECK_INTERVAL
 
     def run(self):
         self.build_menu()
@@ -53,8 +53,9 @@ class NagiosApplet(object):
         self.show_disabled = False
         self.auth = {}
         self.nagios_status = {}
+        self.get_config()
         self.check_status()
-        self.timeout_id = gobject.timeout_add(CHECK_INTERVAL,
+        self.timeout_id = gobject.timeout_add(self.check_interval,
             self.check_status)
 
     def build_menu(self):
@@ -142,6 +143,13 @@ class NagiosApplet(object):
             if conf.has_option('DEFAULT', 'show_disabled'):
                 self.show_disabled = conf.getboolean('DEFAULT',
                     'show_disabled')
+            if conf.has_option('DEFAULT', 'interval'):
+                check_interval = conf.get('DEFAULT',
+                    'interval')
+            try:
+                self.check_interval = int(check_interval) * 1000
+            except:
+                pass
             cred_fields = ['url', 'user', 'passwd']
             if all(f in params for f in cred_fields):
                 self.auth.update({
@@ -178,7 +186,6 @@ class NagiosApplet(object):
         msg = pynotify.Notification(header, body)
         msg.set_timeout(5)
         msg.show()
-        #msg.close()
 
 if __name__ == "__main__":
     applet = NagiosApplet()
