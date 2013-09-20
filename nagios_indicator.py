@@ -79,8 +79,7 @@ class NagiosApplet(object):
     def check_status(self):
         if self.check_config():
             try:
-                new_nagios_status = get_new_nagios_status(
-                    show_disabled=self.show_disabled, **self.auth)
+                new_nagios_status = get_new_nagios_status(**self.auth)
             except (HTTPError, URLError, RuntimeError): # issue8797
                 self.set_icon(NETWORK_ICON)
                 self.notify(**NETWORK_ERR_MSG)
@@ -94,15 +93,21 @@ class NagiosApplet(object):
 
     def check_err_notifies(self, new_nagios_status):
         for host in new_nagios_status:
-            for service, new_value in new_nagios_status[host].items():
+            for service, state in new_nagios_status[host].items():
+                status = state['status']
+                notify = state['notify']
                 try:
-                    old_value = self.nagios_status[host].pop(service)
-                    if new_value != old_value or self.renotify:
-                        self.notify(header=host,
-                            body='{0} {1}'.format(service, new_value))
+                    old_state = self.nagios_status[host].pop(service)
+                    old_status = old_state['status']
+                    old_notify = old_state['notify']
+                    if status != old_status or self.renotify \
+                        or (notify and not old_notify):
+                            self.notify(header=host,
+                                body='{0} {1}'.format(service, status))
                 except KeyError:
-                    self.notify(header=host,
-                        body='{0} {1}'.format(service, new_value))
+                    if notify or self.show_disabled:
+                        self.notify(header=host,
+                            body='{0} {1}'.format(service, status))
 
     def check_ok_notifies(self):
         for host in self.nagios_status:
@@ -113,7 +118,7 @@ class NagiosApplet(object):
     def update_icon(self):
         #update icon after check_status
         icon = None
-        st = set([v for k in  self.nagios_status.values()
+        st = set([v['status'] for k in  self.nagios_status.values()
             for v in  k.values()])
         if u'CRITICAL' in st:
             icon = CRITICAL_ICON

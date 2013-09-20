@@ -2,7 +2,7 @@
 
 import urllib2
 from urllib import urlencode
-from BeautifulSoup import BeautifulSoup
+from HTMLParser import HTMLParser
 
 
 URL_PREFIX = 'cgi-bin/nagios3/status.cgi?'
@@ -11,12 +11,55 @@ GET_PARAMS = {
     'servicestatustypes': 28,
     'hoststatustypes': 15,
 }
-DISABLE_NOTIFICATION = '/nagios3/images/ndisabled.gif'
+DISABLE_NOTIFY_GIF = 'ndisabled.gif'
 
 
-def get_new_nagios_status(url, user, passwd,
-    show_disabled=False):
+class NagiosHTMLParser(HTMLParser):
+    """ parse nagios page
+    """
 
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.problems = {}
+
+    def handle_starttag(self, tag, attrs):
+        props = dict(attrs)
+        if tag == 'a':
+            if 'extinfo' in props['href'] and 'service' in props['href']:
+                self.host = props['href'].split('&')[1].split('=')[1]
+                self.service = props['href'].split('&')[2].split('=')[1]
+                if '+' in self.service:
+                        self.service = self.service.replace('+', ' ')
+                if '#' in self.service:
+                        self.service = self.service.split('#')[0]
+
+                if not self.host in self.problems:
+                    self.problems[self.host] = {}
+                self.problems[self.host][self.service] = {
+                    'notify': True,
+                }
+
+        if tag == 'td' and 'class' in props:
+            if props['class'] == 'statusWARNING':
+                self.problems[self.host][self.service]['status'] = 'WARNING'
+            if props['class'] == 'statusCRITICAL':
+                self.problems[self.host][self.service]['status'] = 'CRITICAL'
+        if tag == 'img' and 'src' in props:
+            if DISABLE_NOTIFY_GIF in props['src']:
+                self.problems[self.host][self.service]['notify'] = False
+
+
+def get_new_nagios_status(url, user, passwd):
+    """ Output:
+    {
+    'host_name': {
+        'service_name': {
+            'status': 'CRITICAL|WARNING',
+            'notify': True,
+            },
+        },
+    }
+    """
     if not url.endswith('/'):
         url += '/'
     full_url = url + URL_PREFIX
@@ -27,31 +70,7 @@ def get_new_nagios_status(url, user, passwd,
     urllib2.install_opener(opener)
     response = urllib2.urlopen(full_url).read()
 
-    soup = BeautifulSoup(response)
-    status_table = soup.find('table', {'class': 'status'})
+    parser = NagiosHTMLParser()
+    parser.feed(response)
 
-    nagios = {}
-    tr = status_table.findNext()
-    while tr:
-        notification = True
-        tds = (tr.findAll('td', recursive=False))
-        if len(tds) == 7:
-            try:
-                host_name = tds[0].find('table').find('table').find(
-                    'td').find('a').string
-            except AttributeError:
-                pass
-            service_name = tds[1].find('table').find('table').find(
-                'td').find('a').string
-            if tds[1].find('table').find('img', {'src': DISABLE_NOTIFICATION}):
-                notification = False
-            status = tds[2].string
-
-            if notification or show_disabled:
-                if not host_name in nagios:
-                    nagios[host_name] = {}
-                nagios[host_name][service_name] = status
-
-        tr = tr.findNextSibling()
-
-    return nagios
+    return parser.problems
