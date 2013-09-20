@@ -30,17 +30,15 @@ create config file `.nagios_checker` in your `$HOME` directory with content:
     
 or
 
-* create startup scirpt, for example
+* create startup scirpt, for example `~/.config/autostart/nagios.desktop`
 
-
-<pre> ~/.config/autostart/nagios.desktop
-    [Desktop Entry]
-    Name=Nagios Indicator
-    GenericName=Nagios Indicator
-    Comment=Nagios Indicator
-    Exec=python /path/to/nagios_indicator/nagios_indicator.py
-    Terminal=false
-    Type=Application
+<pre>[Desktop Entry]
+Name=Nagios Indicator
+GenericName=Nagios Indicator
+Comment=Nagios Indicator
+Exec=python /path/to/nagios_indicator/nagios_indicator.py
+Terminal=false
+Type=Application
 </pre>
 
 
