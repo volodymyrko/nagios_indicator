@@ -11,55 +11,67 @@ GET_PARAMS = {
     'servicestatustypes': 28,
     'hoststatustypes': 15,
 }
+HOST_NAME_EVEN = {
+    'align': 'left',
+    'valign': 'center',
+    'class': 'statusEven',
+}
+HOST_NAME_ODD = {
+    'align': 'left',
+    'valign': 'center',
+    'class': 'statusOdd',
+}
+SERVICE_WARNING = {
+    'align': 'LEFT',
+    'valign': 'center',
+    'class': 'statusBGWARNING',
+}
+SERVICE_CRITICAL = {
+    'align': 'LEFT',
+    'valign': 'center',
+    'class': 'statusBGCRITICAL',
+}
 DISABLE_NOTIFY_GIF = 'ndisabled.gif'
 
 
 class NagiosHTMLParser(HTMLParser):
-    """ parse nagios page
-    """
 
     def __init__(self):
         HTMLParser.__init__(self)
         self.problems = {}
+        self.get_host_name = False
+        self.get_service_name = False
+        self.status = None
 
     def handle_starttag(self, tag, attrs):
         props = dict(attrs)
-        if tag == 'a':
-            if 'extinfo' in props['href'] and 'service' in props['href']:
-                self.host = props['href'].split('&')[1].split('=')[1]
-                self.service = props['href'].split('&')[2].split('=')[1]
-                if '+' in self.service:
-                        self.service = self.service.replace('+', ' ')
-                if '#' in self.service:
-                        self.service = self.service.split('#')[0]
-
-                if not self.host in self.problems:
-                    self.problems[self.host] = {}
-                self.problems[self.host][self.service] = {
-                    'notify': True,
-                }
-
-        if tag == 'td' and 'class' in props:
-            if props['class'] == 'statusWARNING':
-                self.problems[self.host][self.service]['status'] = 'WARNING'
-            if props['class'] == 'statusCRITICAL':
-                self.problems[self.host][self.service]['status'] = 'CRITICAL'
+        if tag == 'td':
+            if props == HOST_NAME_EVEN or props == HOST_NAME_ODD:
+                self.get_host_name = True
+            if props == SERVICE_WARNING or props == SERVICE_CRITICAL:
+                self.status = props['class'][8:]
+                self.get_service_name = True
         if tag == 'img' and 'src' in props:
             if DISABLE_NOTIFY_GIF in props['src']:
-                self.problems[self.host][self.service]['notify'] = False
+                self.problems[self.host_name][self.service_name][
+                'notify'] = False
+
+    def handle_data(self, data):
+        if self.get_host_name:
+            self.get_host_name = False
+            self.host_name = data
+            if not self.host_name in self.problems:
+                self.problems[self.host_name] = {}
+        if self.get_service_name:
+            self.get_service_name = False
+            self.service_name = data
+            self.problems[self.host_name][self.service_name] = {
+                'notify': True,
+                'status': self.status,
+            }
 
 
 def get_new_nagios_status(url, user, passwd):
-    """ Output:
-    {
-    'host_name': {
-        'service_name': {
-            'status': 'CRITICAL|WARNING',
-            'notify': True,
-            },
-        },
-    }
-    """
     if not url.endswith('/'):
         url += '/'
     full_url = url + URL_PREFIX
