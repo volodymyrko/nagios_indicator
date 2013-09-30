@@ -29,6 +29,8 @@ NETWORK_ERR_MSG = {
     'header': 'NETWORK ERROR',
     'body': '',
 }
+ICONS_PATH = os.path.join(os.path.realpath(os.path.dirname(
+    os.path.abspath(__file__))), 'icons')
 
 
 class NagiosApplet(object):
@@ -39,7 +41,8 @@ class NagiosApplet(object):
         pynotify.init("Init")
         self.ind = appindicator.Indicator("nagios-checker",
             NAGIOS_ICON,
-            appindicator.CATEGORY_APPLICATION_STATUS)
+            appindicator.CATEGORY_APPLICATION_STATUS,
+            ICONS_PATH)
         self.check_interval = CHECK_INTERVAL
 
     def run(self):
