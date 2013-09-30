@@ -121,8 +121,11 @@ class NagiosApplet(object):
     def update_icon(self):
         #update icon after check_status
         icon = None
-        st = set([v['status'] for k in  self.nagios_status.values()
-            for v in  k.values()])
+        st = set()
+        for services in self.nagios_status.values():
+            for service in services.values():
+                if service['notify'] or self.show_disabled:
+                    st.add(service['status'])
         if u'CRITICAL' in st:
             icon = CRITICAL_ICON
         elif u'WARNING' in st:
