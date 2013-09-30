@@ -1,3 +1,1 @@
-* refactoring reading config file
-* refactoring processing "disable notification" service
-* add custom icons
+* read config from current directory
